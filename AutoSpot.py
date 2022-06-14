@@ -8,15 +8,21 @@ import configparser
 # Utility to read email from Gmail Using Python
 #
 # ------------------------------------------------
-config = configparser.ConfigParser()
-config.read('config.ini')
+try:
+    config = configparser.ConfigParser()
+    config.read('config.ini')
 
 
-SCAN_EMAIL = config['GMAIL']['EMAIL']
-FROM_PWD = config['GMAIL']['PASSWORD']
-SMTP_SERVER = config['SMTP']["SMTP_SERVER"]
-SMTP_PORT = config['SMTP']['SMTP_PORT']
-FROM_EMAIL = config['GMAIL']['FROM_EMAIL']
+    SCAN_EMAIL = config['GMAIL']['EMAIL']
+    FROM_PWD = config['GMAIL']['PASSWORD']
+    SMTP_SERVER = config['SMTP']["SMTP_SERVER"]
+    SMTP_PORT = config['SMTP']['SMTP_PORT']
+    FROM_EMAIL = config['GMAIL']['FROM_EMAIL']
+except error:
+    print("config error\n")
+    print(error)
+    input("\n press enter to continue")
+
 DATE_STR = "%Y%M%D"
 CSV_FILE = "Database.csv"
 # KeyWords to fine in email 
@@ -65,6 +71,7 @@ def main():
 
 if __name__ == "__main__":
     try:
+        
         main()
     except error:
         print(error)
