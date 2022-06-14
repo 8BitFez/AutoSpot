@@ -69,3 +69,6 @@ if __name__ == "__main__":
     except error:
         print(error)
         input("\n Press enter to quit")
+    else:
+        print("Clean exit i think?")
+        input("\n Press enter to quit")
