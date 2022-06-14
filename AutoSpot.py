@@ -1,3 +1,4 @@
+from copy import error
 import imap_tools
 import csv
 import configparser
@@ -13,8 +14,8 @@ config.read('config.ini')
 
 SCAN_EMAIL = config['GMAIL']['EMAIL']
 FROM_PWD = config['GMAIL']['PASSWORD']
-SMTP_SERVER = "imap.gmail.com" 
-SMTP_PORT = 993
+SMTP_SERVER = config['SMTP']["SMTP_SERVER"]
+SMTP_PORT = config['SMTP']['SMTP_PORT']
 FROM_EMAIL = config['GMAIL']['FROM_EMAIL']
 DATE_STR = "%Y%M%D"
 CSV_FILE = "Database.csv"
@@ -25,7 +26,6 @@ UUID = "name"
 DATABASE = []
 
 #Find and snip out the import stuff
-
 def find_value(body,find_str):
     start = body.find(find_str)
     body_lang = len(body)
@@ -64,4 +64,8 @@ def main():
             writer.writerow(email)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except error:
+        print(error)
+        input("\n Press enter to quit")
