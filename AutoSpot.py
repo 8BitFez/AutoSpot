@@ -1,29 +1,36 @@
 from copy import error
+from logging import exception
 import imap_tools
 import csv
 import configparser
 
 # -------------------------------------------------
 #
-# Utility to read email from Gmail Using Python
+# Utility to parse SpotHero Email to database
 #
 # ------------------------------------------------
-try:
-    config = configparser.ConfigParser()
-    config.read('config.ini')
+error_code = 0
+config_err = False
+config = configparser.ConfigParser()
+config.read('config.ini')
 
-
+if(config.has_section('GMAIL')):
     SCAN_EMAIL = config['GMAIL']['EMAIL']
     FROM_PWD = config['GMAIL']['PASSWORD']
+    FROM_EMAIL = config['GMAIL']['FROM_EMAIL']
+else:
+    config_err = True
+if(config.has_section('SMTP')):
     SMTP_SERVER = config['SMTP']["SMTP_SERVER"]
     SMTP_PORT = config['SMTP']['SMTP_PORT']
-    FROM_EMAIL = config['GMAIL']['FROM_EMAIL']
-except error:
-    print("config error\n")
-    print(error)
-    input("\n press enter to continue")
+else:
+    config_err = True
+if(config_err):
+    error_code = 1
+    print("\nConfig File error please check your config file\n")
 
-DATE_STR = "%Y%M%D"
+
+DATE_STR = "%Y/%m/%d"
 CSV_FILE = "Database.csv"
 # KeyWords to fine in email 
 FIND_WORDS = ["Rental ID#:","Reservation Start:","Reservation End:","License Plate:","Phone Number:"]
@@ -48,7 +55,7 @@ def main():
             value_out = {}
             #Create a unique key for every reservation 
             date_str =msg.date.strftime(DATE_STR)
-            key = (date_str + msg.subject)
+            key = (date_str +"_"+ msg.subject)
             # create the values and add it to the database
             for keyword in FIND_WORDS:
                 out = find_value(msg.text,keyword)
@@ -57,8 +64,9 @@ def main():
 
             value_out[UUID] = key 
             DATABASE.append(value_out)
-    
-    print(str(DATABASE))
+    for email in DATABASE:
+        print('added '+str(email[UUID]))
+        print("added "+str(len(DATABASE))+" reservation to database")
     
     with open(CSV_FILE, mode='w') as csv_file:
         fieldnames = FIND_WORDS
@@ -71,11 +79,12 @@ def main():
 
 if __name__ == "__main__":
     try:
-        
+        if(error_code > 0):
+            raise error
         main()
-    except error:
-        print(error)
-        input("\n Press enter to quit")
+    except Exception as e:
+        print("error_code:" + str(e))
+        input("Press enter to quit")
     else:
-        print("Clean exit i think?")
-        input("\n Press enter to quit")
+        print("Clean exit error code:"+ str(error_code))
+        input("\nPress enter to quit")
