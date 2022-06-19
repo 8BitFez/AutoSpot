@@ -53,8 +53,9 @@ def find_value(body,find_str):
         scn = body[x]
         end = x
         if scn == "\n":
-            sub = body[start:end]
-            return sub
+            sub = body[start:(end)]
+            sub_str =  sub.strip()
+            return sub_str
             break    
 def get_from_sender(Database,From_Email,imported=False,Sent_Date=None):
     with imap_tools.MailBox(SMTP_SERVER).login(SCAN_EMAIL, FROM_PWD) as mailbox:
@@ -67,6 +68,7 @@ def get_from_sender(Database,From_Email,imported=False,Sent_Date=None):
                 out = find_value(msg.text,keyword)
                 arr = out.split("* ")
                 value_out[arr[0]] = arr[1]
+#         dup check 
             if imported:    
                 for data in Database:
                     if value_out[UUID] == data[UUID]:
@@ -88,21 +90,25 @@ def write_to_csv(database):
             writer.writerow(email)
 def read_csv(database):
     success = True
-    with open(CSV_FILE) as csv_file:
-        csv_reader = csv.DictReader(csv_file, delimiter=',')
-        try:
+    try:
+        with open(CSV_FILE) as csv_file:
+            csv_reader = csv.DictReader(csv_file, delimiter=',')
             for row in csv_reader:
                 database.append(row)
-        except KeyError as e:
-            print("Import error could not find key " + str(e))
-            print("Entry could have deleted/changed")
-            success = False
-        finally:
-            return success
+    except KeyError as e:
+        print("Import error could not find key " + str(e))
+        print("Entry could have deleted/changed")
+        success = False
+    except FileNotFoundError as e:
+        print("File not found or Corrupted can't import ")
+        success = False
+    finally:
+        return success
 def main():
     import_suc = read_csv(DATABASE)
     get_from_sender(DATABASE,FROM_EMAIL,imported=import_suc)
-    #write_to_csv(DATABASE)
+    print(str(DATABASE))
+    write_to_csv(DATABASE)
 
 if __name__ == "__main__":
     main()
