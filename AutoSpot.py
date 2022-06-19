@@ -1,9 +1,9 @@
-from copy import error
-from logging import exception
+
 import imap_tools
 import csv
 import configparser
-
+import datetime
+import numpy as np
 # -------------------------------------------------
 #
 # Utility to parse SpotHero Email to database
@@ -11,9 +11,13 @@ import configparser
 # ------------------------------------------------
 error_code = 0
 config_err = False
+CSV_FILE = "Database.csv"
+
 config = configparser.ConfigParser()
 config.read('config.ini')
-
+TODAY = datetime.date.today()
+## checking if the config has these section
+##
 if(config.has_section('GMAIL')):
     SCAN_EMAIL = config['GMAIL']['EMAIL']
     FROM_PWD = config['GMAIL']['PASSWORD']
@@ -29,12 +33,15 @@ if(config_err):
     error_code = 1
     print("\nConfig File error please check your config file\n")
 
-
 DATE_STR = "%Y/%m/%d"
-CSV_FILE = "Database.csv"
-# KeyWords to fine in email 
 FIND_WORDS = ["Rental ID#:","Reservation Start:","Reservation End:","License Plate:","Phone Number:"]
-UUID = "name"
+UUID = 'Uid'
+DATE = 'Date'
+FIELD_NAMES = np.concatenate((FIND_WORDS,[UUID,DATE]))
+
+
+print("Today is "+(TODAY.strftime(DATE_STR)))
+# KeyWords to fine in email
 #Keywords with The value
 DATABASE = []
 
@@ -48,43 +55,54 @@ def find_value(body,find_str):
         if scn == "\n":
             sub = body[start:end]
             return sub
-            break
-def main():
+            break    
+def get_from_sender(Database,From_Email,imported=False,Sent_Date=None):
     with imap_tools.MailBox(SMTP_SERVER).login(SCAN_EMAIL, FROM_PWD) as mailbox:
-        for msg in mailbox.fetch(imap_tools.AND(from_= FROM_EMAIL)):
-            value_out = {}
+        for msg in mailbox.fetch(imap_tools.AND(from_= From_Email,sent_date=Sent_Date)):
             #Create a unique key for every reservation 
-            date_str =msg.date.strftime(DATE_STR)
-            key = (date_str +"_"+ msg.subject)
+            value_out = {UUID:msg.uid,DATE:msg.date}
+            dup = False
             # create the values and add it to the database
             for keyword in FIND_WORDS:
                 out = find_value(msg.text,keyword)
                 arr = out.split("* ")
                 value_out[arr[0]] = arr[1]
-
-            value_out[UUID] = key 
-            DATABASE.append(value_out)
-    for email in DATABASE:
-        print('added '+str(email[UUID]))
-        print("added "+str(len(DATABASE))+" reservation to database")
-    
+            if imported:    
+                for data in Database:
+                    if value_out[UUID] == data[UUID]:
+                        print ("found duplicate entry skipping UID: " + data[UUID])
+                        dup = True
+            if not dup:
+                Database.append(value_out)
+                print("added email with UID: "+value_out[UUID])  
+def write_to_csv(database):
     with open(CSV_FILE, mode='w') as csv_file:
         fieldnames = FIND_WORDS
-        fieldnames.append(UUID)
+        fieldnames.append(UUID,)
+        fieldnames.append(DATE)
+        
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
 
         writer.writeheader()
-        for email in DATABASE:
+        for email in database:
             writer.writerow(email)
+def read_csv(database):
+    success = True
+    with open(CSV_FILE) as csv_file:
+        csv_reader = csv.DictReader(csv_file, delimiter=',')
+        try:
+            for row in csv_reader:
+                database.append(row)
+        except KeyError as e:
+            print("Import error could not find key " + str(e))
+            print("Entry could have deleted/changed")
+            success = False
+        finally:
+            return success
+def main():
+    import_suc = read_csv(DATABASE)
+    get_from_sender(DATABASE,FROM_EMAIL,imported=import_suc)
+    #write_to_csv(DATABASE)
 
 if __name__ == "__main__":
-    try:
-        if(error_code > 0):
-            raise error
-        main()
-    except Exception as e:
-        print("error_code:" + str(e))
-        input("Press enter to quit")
-    else:
-        print("Clean exit error code:"+ str(error_code))
-        input("\nPress enter to quit")
+    main()
